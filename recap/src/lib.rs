@@ -108,9 +108,8 @@
 //! ```
 pub use regex::Regex;
 use serde::de::{
-    self,
+    self, Deserialize, IntoDeserializer,
     value::{BorrowedStrDeserializer, MapDeserializer, SeqDeserializer},
-    Deserialize, IntoDeserializer,
 };
 
 // used in derive crate output
@@ -121,10 +120,6 @@ use serde::de::{
 pub use lazy_static::lazy_static;
 
 // Re-export for #[derive(Recap)]
-#[cfg(feature = "derive")]
-#[allow(unused_imports)]
-#[macro_use]
-extern crate recap_derive;
 #[cfg(feature = "derive")]
 #[doc(hidden)]
 pub use recap_derive::*;
@@ -366,7 +361,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{from_captures, Regex};
+    use super::{Regex, from_captures};
     use serde::Deserialize;
     use std::error::Error;
 

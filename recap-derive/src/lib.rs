@@ -7,8 +7,9 @@ use proc_macro2::Span;
 use quote::quote;
 use regex::Regex;
 use syn::{
-    parse_macro_input, Attribute, Data::Enum, Data::Struct, DataEnum, DataStruct, DeriveInput,
-    Fields, Ident, Lit, Meta, NestedMeta,
+    Attribute,
+    Data::{Enum, Struct},
+    DataEnum, DataStruct, DeriveInput, Fields, Ident, LitStr, parse_macro_input,
 };
 
 #[proc_macro_derive(Recap, attributes(recap))]
@@ -204,17 +205,9 @@ pub fn derive_recap(item: TokenStream) -> TokenStream {
         }
     };
 
-    let injector = Ident::new(
-        &format!("RECAP_IMPL_FOR_{}", item.ident.to_string().to_uppercase()),
-        Span::call_site(),
-    );
-
     let out = quote! {
-        const #injector: () = {
-            extern crate recap;
-            #impl_inner
-            #impl_matcher
-        };
+        #impl_inner
+        #impl_matcher
     };
     out.into()
 }
@@ -300,28 +293,26 @@ fn extract_regex(item: &DeriveInput) -> Option<Regexes> {
 }
 
 fn extract_regex_from_recap_attribute(attrs: &[Attribute]) -> Option<String> {
-    attrs
-        .iter()
-        .flat_map(syn::Attribute::parse_meta)
-        .filter_map(|x| match x {
-            Meta::List(y) => Some(y),
-            _ => None,
-        })
-        .filter(|x| x.path.is_ident("recap"))
-        .flat_map(|x| x.nested.into_iter())
-        .filter_map(|x| match x {
-            NestedMeta::Meta(y) => Some(y),
-            _ => None,
-        })
-        .filter_map(|x| match x {
-            Meta::NameValue(y) => Some(y),
-            _ => None,
-        })
-        .find(|x| x.path.is_ident("regex"))
-        .and_then(|x| match x.lit {
-            Lit::Str(y) => Some(y.value()),
-            _ => None,
-        })
+    for attr in attrs {
+        if attr.path().is_ident("recap") {
+            let mut re = None;
+            if attr
+                .parse_nested_meta(|m| {
+                    if m.path.is_ident("regex") {
+                        let value = m.value()?;
+                        let s: LitStr = value.parse()?;
+                        re = Some(s.value());
+                        return Ok(());
+                    }
+                    Err(m.error("unrecognized repr"))
+                })
+                .is_ok()
+            {
+                return re;
+            }
+        }
+    }
+    None
 }
 
 fn extract_enum_regexes(data_enum: &DataEnum) -> HashMap<String, String> {

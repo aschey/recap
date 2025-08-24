@@ -1,5 +1,4 @@
 [workspace]
-members = [
-  "recap",
-  "recap-derive"
-]
+members = ["recap", "recap-derive"]
+resolver = "3"
+
